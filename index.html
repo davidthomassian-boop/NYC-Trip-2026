@@ -65,8 +65,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .day-center{text-align:center;flex:1;padding:0 8px}
 .day-center .dn{font-size:16px;font-weight:500;color:var(--text)}
 .day-center .ds{font-size:11px;color:var(--text-muted);margin-top:2px}
-.ai-summary{margin:12px 16px;padding:10px 12px;background:#f9f8ff;border:0.5px solid #e0deff;border-radius:10px;font-size:12px;color:#555;line-height:1.6;border-left:2px solid var(--purple)}
-.ai-summary.loading{color:var(--text-hint);font-style:italic}
 .slot-section{}
 .slot-header{position:sticky;top:0;background:var(--white);padding:8px 16px 6px;border-bottom:0.5px solid var(--border-light);display:flex;align-items:center;gap:7px;z-index:10}
 .slot-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
@@ -178,16 +176,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .vcard-date{font-size:11px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:5px}
 .vcard-date-dot{width:6px;height:6px;border-radius:50%;background:var(--purple)}
 .maps-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--blue);font-weight:500;text-decoration:none;padding:6px 10px;border-radius:8px;border:0.5px solid #c8ddf5;background:var(--white)}
-
-/* API KEY SETUP */
-#key-setup{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px}
-.key-card{background:white;border-radius:16px;padding:24px;max-width:340px;width:100%}
-.key-card h2{font-size:16px;font-weight:500;color:#1a1a1a;margin-bottom:8px}
-.key-card p{font-size:12px;color:#888;line-height:1.6;margin-bottom:16px}
-.key-card input{width:100%;font-size:12px;padding:9px 12px;border-radius:8px;border:0.5px solid #e0e0e0;color:#1a1a1a;outline:none;margin-bottom:8px;font-family:monospace}
-.key-card .key-btn{width:100%;padding:10px;border-radius:8px;border:none;background:#1a1a1a;color:white;font-size:13px;cursor:pointer;margin-bottom:8px}
-.key-card .skip-btn{width:100%;padding:8px;border-radius:8px;border:0.5px solid #e0e0e0;background:white;color:#888;font-size:12px;cursor:pointer}
-.key-note{font-size:10px;color:#bbb;text-align:center;margin-top:8px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -209,7 +197,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <div class="day-center"><div class="dn" id="today-dayname"></div><div class="ds" id="today-datesub"></div></div>
       <button class="nav-btn" onclick="changeDay(1)"><svg viewBox="0 0 14 14"><polyline points="5,2 10,7 5,12"/></svg></button>
     </div>
-    <div class="ai-summary loading" id="ai-summary">Generating your day summary...</div>
     <div id="today-content"></div>
   </div>
 
@@ -251,16 +238,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
     </button>
   </nav>
 
-<div id="key-setup" style="display:none">
-  <div class="key-card">
-    <h2>Enable AI day summaries</h2>
-    <p>Enter your Anthropic API key to get smart daily briefings. Your key is stored only on this device and never sent to GitHub.</p>
-    <input type="password" id="api-key-input" placeholder="sk-ant-...">
-    <button class="key-btn" onclick="saveApiKey()">Save & enable</button>
-    <button class="skip-btn" onclick="document.getElementById('key-setup').style.display='none'">Skip for now</button>
-    <div class="key-note">Get a key at console.anthropic.com<br>Your key never leaves your device</div>
-  </div>
-</div>
 </div>
 
 <script>
@@ -301,25 +278,6 @@ function formatDate(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d)) return '';
   return d.toISOString().split('T')[0];
-}
-
-
-function getApiKey() {
-  return localStorage.getItem('nyc_trip_api_key') || '';
-}
-
-function saveApiKey() {
-  const key = document.getElementById('api-key-input').value.trim();
-  if (key.startsWith('sk-ant-')) {
-    localStorage.setItem('nyc_trip_api_key', key);
-    document.getElementById('key-setup').style.display = 'none';
-  } else {
-    alert('That doesn\'t look like a valid Anthropic API key. It should start with sk-ant-');
-  }
-}
-
-function showKeySetup() {
-  document.getElementById('key-setup').style.display = 'flex';
 }
 
 async function loadData() {
@@ -462,10 +420,6 @@ function renderToday() {
   document.getElementById('today-dayname').textContent = d.display;
   const items = venues.filter(v => v.inItinerary && v.date === d.date);
   document.getElementById('today-datesub').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
-  const summary = document.getElementById('ai-summary');
-  summary.className = 'ai-summary loading';
-  summary.textContent = 'Generating day summary...';
-  getAISummary(d, items);
   const container = document.getElementById('today-content');
   container.innerHTML = '';
   if (items.length === 0) {
@@ -498,38 +452,6 @@ function renderToday() {
   });
 }
 
-async function getAISummary(day, items) {
-  const el = document.getElementById('ai-summary');
-  if (!items.length) {
-    el.className = 'ai-summary';
-    el.textContent = 'Nothing scheduled for this day yet — check your wishlist for ideas.';
-    return;
-  }
-  if (!getApiKey()) {
-    el.className = 'ai-summary';
-    el.innerHTML = 'AI summaries need an API key. <span style="color:var(--purple);cursor:pointer;font-weight:500" onclick="showKeySetup()">Set up now →</span>';
-    return;
-  }
-  try {
-    const prompt = `You are a friendly NYC trip assistant. Write a 2-3 sentence briefing for ${day.display} based on these scheduled items: ${items.map(v => `${v.timeSlot}: ${v.name}${v.neighbourhood ? ' ('+v.neighbourhood+')' : ''}${v.notes ? ' — '+v.notes : ''}`).join(', ')}. Be practical and specific. Mention any useful tips or things to know about the day's flow.`;
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':getApiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:150,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data = await res.json();
-    const text = data.content && data.content[0] ? data.content[0].text : '';
-    el.className = 'ai-summary';
-    el.textContent = text || 'Have a great day in NYC!';
-  } catch(e) {
-    el.className = 'ai-summary';
-    el.textContent = 'Have a great day in NYC!';
-  }
-}
 
 function buildKanban() {
   const thead = document.getElementById('kb-head');
