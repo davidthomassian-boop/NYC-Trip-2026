@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NYC Trip 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --white:#ffffff;
+  --bg:#f7f7f5;
+  --border:#e8e8e6;
+  --border-light:#f0f0ee;
+  --text:#1a1a1a;
+  --text-muted:#888;
+  --text-hint:#bbb;
+  --purple:#7F77DD;
+  --purple-light:#EEEDFE;
+  --purple-dark:#3C3489;
+  --teal:#1D9E75;
+  --teal-light:#E1F5EE;
+  --amber:#EF9F27;
+  --amber-light:#FAEEDA;
+  --red:#E24B4A;
+  --blue:#378ADD;
+  --deli:#BA7517;
+  --nav-h:56px;
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+#app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto;background:var(--white);position:relative}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:var(--nav-h)}
+.screen::-webkit-scrollbar{display:none}
+
+/* TOP BAR */
+.top-bar{padding:12px 16px 10px;border-bottom:0.5px solid var(--border);background:var(--white);flex-shrink:0}
+.top-bar h1{font-size:15px;font-weight:500;color:var(--text)}
+.top-bar p{font-size:11px;color:var(--text-muted);margin-top:2px}
+.progress-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.progress-track{flex:1;height:2px;background:var(--border);border-radius:2px}
+.progress-fill{height:100%;background:var(--purple);border-radius:2px;transition:width .3s}
+.progress-label{font-size:10px;color:var(--text-hint);white-space:nowrap}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:var(--nav-h);display:flex;background:var(--white);border-top:0.5px solid var(--border);z-index:100}
+.bnav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;color:var(--text-hint);font-size:9px;padding:4px}
+.bnav.active{color:var(--text)}
+.bnav svg{width:18px;height:18px;stroke-width:1.5;fill:none}
+.bnav.active svg{stroke:var(--text)}
+.bnav svg{stroke:var(--text-hint)}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:200}
+#loading .spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite}
+#loading p{font-size:13px;color:var(--text-muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ERROR */
+#error{display:none;padding:24px 16px;text-align:center}
+#error p{font-size:13px;color:var(--text-muted);line-height:1.6}
+
+/* ========= TODAY ========= */
+#today .day-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:0.5px solid var(--border);background:var(--white)}
+#today .nav-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+#today .nav-btn svg{width:14px;height:14px;stroke:var(--text-muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.day-center{text-align:center;flex:1;padding:0 8px}
+.day-center .dn{font-size:16px;font-weight:500;color:var(--text)}
+.day-center .ds{font-size:11px;color:var(--text-muted);margin-top:2px}
+.ai-summary{margin:12px 16px;padding:10px 12px;background:#f9f8ff;border:0.5px solid #e0deff;border-radius:10px;font-size:12px;color:#555;line-height:1.6;border-left:2px solid var(--purple)}
+.ai-summary.loading{color:var(--text-hint);font-style:italic}
+.slot-section{}
+.slot-header{position:sticky;top:0;background:var(--white);padding:8px 16px 6px;border-bottom:0.5px solid var(--border-light);display:flex;align-items:center;gap:7px;z-index:10}
+.slot-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-m{background:var(--amber)}
+.dot-a{background:var(--teal)}
+.dot-e{background:var(--purple)}
+.slot-label{font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+.slot-count{font-size:10px;color:var(--text-hint)}
+.day-item{padding:11px 16px;border-bottom:0.5px solid var(--border-light);display:flex;gap:12px;align-items:flex-start}
+.item-time{font-size:10px;color:var(--text-hint);min-width:36px;text-align:right;padding-top:2px;flex-shrink:0}
+.item-body .in{font-size:13px;font-weight:500;color:var(--text)}
+.item-body .is{font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.4}
+.item-body .maps-btn{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:10px;color:var(--blue);text-decoration:none;font-weight:500}
+.no-items{padding:24px 16px;text-align:center;font-size:13px;color:var(--text-hint)}
+
+/* ========= TRIP ========= */
+#trip .kb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+#trip .kb-wrap::-webkit-scrollbar{display:none}
+#trip table{border-collapse:collapse;table-layout:fixed}
+#trip th,#trip td{padding:0;margin:0}
+.kb-corner{width:52px;min-width:52px;position:sticky;left:0;z-index:20;background:var(--white);border-right:0.5px solid var(--border);border-bottom:0.5px solid var(--border)}
+.kb-day-th{min-width:100px;width:100px;text-align:center;padding:8px 4px;background:var(--white);border-bottom:0.5px solid var(--border);border-right:0.5px solid var(--border-light)}
+.kb-day-th .dn{font-size:11px;font-weight:500;color:var(--text)}
+.kb-day-th .dd{font-size:10px;color:var(--text-hint);margin-top:1px}
+.kb-row-label{background:var(--white);position:sticky;left:0;z-index:10;border-right:0.5px solid var(--border);border-bottom:0.5px solid var(--border-light);padding:8px 6px;vertical-align:top;width:52px;min-width:52px}
+.kb-row-label .rli{display:flex;flex-direction:column;align-items:center;gap:4px}
+.kb-row-label .rld{width:6px;height:6px;border-radius:50%}
+.kb-row-label .rln{font-size:9px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg)}
+.kb-cell{padding:7px 8px;border-right:0.5px solid var(--border-light);border-bottom:0.5px solid var(--border-light);vertical-align:top;min-width:100px;width:100px}
+.kb-cell.m{border-top:2px solid var(--amber);background:#fffcf5}
+.kb-cell.a{border-top:2px solid var(--teal);background:#f5fffa}
+.kb-cell.e{border-top:2px solid var(--purple);background:#faf9ff}
+.kb-cell.travel{background:var(--bg);text-align:center;vertical-align:middle;color:var(--text-hint);font-size:10px;font-style:italic;padding:14px 4px}
+.kb-cell.empty{background:var(--bg)}
+.kb-item{margin-bottom:5px;padding-bottom:5px;border-bottom:0.5px solid var(--border-light)}
+.kb-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.kb-item .kn{font-size:10px;font-weight:500;color:var(--text);line-height:1.3}
+.kb-item .ks{font-size:9px;color:var(--text-hint);margin-top:1px;line-height:1.3}
+.scroll-hint{text-align:center;padding:8px;font-size:10px;color:var(--text-hint);border-top:0.5px solid var(--border-light)}
+
+/* ========= MAP ========= */
+#map-screen .filter-row{padding:8px 12px;display:flex;gap:5px;overflow-x:auto;border-bottom:0.5px solid var(--border);-webkit-overflow-scrolling:touch}
+#map-screen .filter-row::-webkit-scrollbar{display:none}
+.fpill{font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);color:var(--text-muted);white-space:nowrap;cursor:pointer;flex-shrink:0;background:var(--white);transition:all .15s}
+.fpill.on{color:white;border-color:transparent}
+.fpill[data-cat="all"].on{background:var(--text);border-color:var(--text)}
+.fpill[data-cat="Pizza"].on{background:var(--red)}
+.fpill[data-cat="Deli"].on{background:var(--deli)}
+.fpill[data-cat="Bakery"].on{background:var(--amber);color:#1a1a1a}
+.fpill[data-cat="Bar"].on{background:var(--purple)}
+.fpill[data-cat="Restaurant"].on{background:var(--teal)}
+.fpill[data-cat="Activity"].on{background:var(--blue)}
+#map-el{width:100%;height:calc(100vh - 56px - 48px - 44px - 40px);min-height:300px}
+.map-legend{display:flex;gap:8px;flex-wrap:wrap;padding:6px 12px;border-top:0.5px solid var(--border);background:var(--white)}
+.leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.map-popup{background:var(--white);border-radius:10px;padding:10px 12px;max-width:200px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.map-popup .pn{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px}
+.map-popup .pb{display:inline-block;font-size:9px;padding:2px 6px;border-radius:20px;color:white;margin-bottom:5px;font-weight:500}
+.map-popup .pc{font-size:11px;color:var(--text-muted);line-height:1.4;margin-bottom:6px}
+.map-popup .pm{font-size:10px;color:var(--blue);font-weight:500;text-decoration:none;display:flex;align-items:center;gap:3px}
+.pb.Pizza{background:var(--red)}
+.pb.Deli{background:var(--deli)}
+.pb.Bakery{background:var(--amber);color:#1a1a1a}
+.pb.Bar{background:var(--purple)}
+.pb.Restaurant{background:var(--teal)}
+.pb.Activity{background:var(--blue)}
+
+/* ========= VENUES ========= */
+#venues .filter-wrap{border-bottom:0.5px solid var(--border)}
+#venues .search-row{padding:10px 12px}
+#venues .search-row input{width:100%;font-size:12px;padding:7px 10px;border-radius:8px;border:0.5px solid var(--border);background:#fafafa;color:var(--text);outline:none}
+#venues .search-row input:focus{border-color:#ccc}
+#venues .pill-row{padding:0 12px 10px;display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#venues .pill-row::-webkit-scrollbar{display:none}
+.vpill{font-size:10px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);color:var(--text-muted);white-space:nowrap;cursor:pointer;flex-shrink:0;background:var(--white);transition:all .15s}
+.vpill.on{color:white;border-color:transparent;background:var(--text)}
+.vpill[data-v="scheduled"].on{background:var(--purple);border-color:var(--purple)}
+.vpill[data-v="wishlist"].on{background:#888;border-color:#888}
+.vpill[data-v="Pizza"].on{background:var(--red);border-color:var(--red)}
+.vpill[data-v="Deli"].on{background:var(--deli);border-color:var(--deli)}
+.vpill[data-v="Bakery"].on{background:var(--amber);border-color:var(--amber);color:#1a1a1a}
+.vpill[data-v="Bar"].on{background:var(--purple);border-color:var(--purple)}
+.vpill[data-v="Restaurant"].on{background:var(--teal);border-color:var(--teal)}
+.vpill[data-v="Activity"].on{background:var(--blue);border-color:var(--blue)}
+.venue-count{padding:6px 14px;font-size:11px;color:var(--text-hint);border-bottom:0.5px solid var(--border-light)}
+.vcards{padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+.vcard{background:var(--white);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.vcard.scheduled{border-left:2px solid var(--purple)}
+.vcard-top{padding:10px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.vcard-left{flex:1;min-width:0}
+.vn{font-size:13px;font-weight:500;color:var(--text)}
+.vh{font-size:11px;color:var(--text-hint);margin-top:2px}
+.vc-preview{font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vcard-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.cat-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500;color:white;white-space:nowrap}
+.cat-badge.Pizza{background:var(--red)}
+.cat-badge.Deli{background:var(--deli)}
+.cat-badge.Bakery{background:var(--amber);color:#1a1a1a}
+.cat-badge.Bar{background:var(--purple)}
+.cat-badge.Restaurant{background:var(--teal)}
+.cat-badge.Activity{background:var(--blue)}
+.sched-badge{font-size:9px;padding:2px 7px;border-radius:20px;background:var(--purple-light);color:var(--purple-dark);font-weight:500}
+.chev{font-size:12px;color:var(--text-hint);margin-top:2px}
+.vcard-body{border-top:0.5px solid var(--border-light);padding:10px 12px;background:#fafafa;display:none}
+.vcard.open .vcard-body{display:block}
+.vcard.open .vc-preview{display:none}
+.vcard-full{font-size:12px;color:#555;line-height:1.6;margin-bottom:8px}
+.vcard-date{font-size:11px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.vcard-date-dot{width:6px;height:6px;border-radius:50%;background:var(--purple)}
+.maps-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--blue);font-weight:500;text-decoration:none;padding:6px 10px;border-radius:8px;border:0.5px solid #c8ddf5;background:var(--white)}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><p>Loading your NYC trip...</p></div>
+<div id="app" style="display:none">
+
+  <div class="top-bar">
+    <h1>NYC Trip 2026</h1>
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="progress-label" id="prog-label">Loading...</div>
+    </div>
+  </div>
+
+  <!-- TODAY -->
+  <div class="screen" id="today" style="display:none">
+    <div class="day-nav">
+      <button class="nav-btn" onclick="changeDay(-1)"><svg viewBox="0 0 14 14"><polyline points="9,2 4,7 9,12"/></svg></button>
+      <div class="day-center"><div class="dn" id="today-dayname"></div><div class="ds" id="today-datesub"></div></div>
+      <button class="nav-btn" onclick="changeDay(1)"><svg viewBox="0 0 14 14"><polyline points="5,2 10,7 5,12"/></svg></button>
+    </div>
+    <div class="ai-summary loading" id="ai-summary">Generating your day summary...</div>
+    <div id="today-content"></div>
+  </div>
+
+  <!-- TRIP -->
+  <div class="screen" id="trip" style="display:none">
+    <div class="kb-wrap"><table id="kb-table"><thead id="kb-head"></thead><tbody id="kb-body"></tbody></table></div>
+    <div class="scroll-hint">scroll left / right to see all 8 days</div>
+  </div>
+
+  <!-- MAP -->
+  <div class="screen" id="map-screen" style="display:none;padding-bottom:0">
+    <div class="filter-row" id="map-filters"></div>
+    <div id="map-el"></div>
+    <div class="map-legend" id="map-legend"></div>
+  </div>
+
+  <!-- VENUES -->
+  <div class="screen" id="venues" style="display:none">
+    <div class="filter-wrap">
+      <div class="search-row"><input type="search" id="v-search" placeholder="Search venues, neighbourhoods..." oninput="renderVenues()"></div>
+      <div class="pill-row" id="v-pills"></div>
+    </div>
+    <div class="venue-count" id="v-count"></div>
+    <div class="vcards" id="v-cards"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="bnav active" onclick="showTab('today')" id="nav-today">
+      <svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg>Today
+    </button>
+    <button class="bnav" onclick="showTab('trip')" id="nav-trip">
+      <svg viewBox="0 0 18 18"><rect x="2" y="4" width="14" height="12" rx="1"/><path d="M2 8h14M6 2v4M12 2v4"/></svg>Trip
+    </button>
+    <button class="bnav" onclick="showTab('map-screen')" id="nav-map-screen">
+      <svg viewBox="0 0 18 18"><path d="M9 2C6.24 2 4 4.24 4 7c0 4 5 9 5 9s5-5 5-9c0-2.76-2.24-5-5-5z"/><circle cx="9" cy="7" r="1.5"/></svg>Map
+    </button>
+    <button class="bnav" onclick="showTab('venues')" id="nav-venues">
+      <svg viewBox="0 0 18 18"><path d="M3 5h12M3 9h12M3 13h8"/></svg>Venues
+    </button>
+  </nav>
+</div>
+
+<script>
+const SHEET_ID = '1dpMKkQ6YHbkbInO6bVx3x0z6YlyaMqJX-LKf7U0Kjeg';
+const SHEET_NAME = 'Locations Master';
+const TRIP_START = new Date('2026-04-29');
+const TRIP_END = new Date('2026-05-06');
+const DAYS = [
+  {date:'2026-04-29',display:'Wed 29 Apr',short:'29 Apr',day:'Wed',travel:'morning'},
+  {date:'2026-04-30',display:'Thu 30 Apr',short:'30 Apr',day:'Thu',travel:null},
+  {date:'2026-05-01',display:'Fri 1 May',short:'1 May',day:'Fri',travel:null},
+  {date:'2026-05-02',display:'Sat 2 May',short:'2 May',day:'Sat',travel:null},
+  {date:'2026-05-03',display:'Sun 3 May',short:'3 May',day:'Sun',travel:null},
+  {date:'2026-05-04',display:'Mon 4 May',short:'4 May',day:'Mon',travel:null},
+  {date:'2026-05-05',display:'Tue 5 May',short:'5 May',day:'Tue',travel:null},
+  {date:'2026-05-06',display:'Wed 6 May',short:'6 May',day:'Wed',travel:'evening'},
+];
+const CAT_COLORS = {Pizza:'#E24B4A',Deli:'#BA7517',Bakery:'#EF9F27',Bar:'#7F77DD',Restaurant:'#1D9E75',Activity:'#378ADD'};
+const SLOTS = ['Morning','Afternoon','Evening'];
+let venues = [], currentDayIdx = 0, activeFilters = {map:new Set(['all']), venue:'all'}, venueFilter = 'all', mapInstance = null, mapMarkers = [];
+
+function assignCategory(v) {
+  const n = (v.name + ' ' + v.comment).toLowerCase();
+  if(/pizza|slice|lucali|prince street|joe's|bleecker|paulie|nate|my pie|john's|pop's|scarr|di fara|roberta/i.test(n)) return 'Pizza';
+  if(/deli|katz|russ|daughters|brisket|pastrami|barney|greengrass|datz/i.test(n)) return 'Deli';
+  if(/bakery|bagel|croissant|cake|pastry|dominique|magnolia|radio bak|double crispy|eileen|mei lai|paris bag|utopia/i.test(n)) return 'Bakery';
+  if(/bar|pub|rabbit|cocktail|jazz|club|comedy|speakeasy/i.test(n)) return 'Bar';
+  if(/restaurant|estela|lucali|emilio|panna|junior|ping|nom wah|di an di|noodletown|roberta|red hook tavern|dinner/i.test(n)) return 'Restaurant';
+  return 'Activity';
+}
+
+function mapsUrl(name) {
+  return 'https://www.google.com/maps/search/?q=' + encodeURIComponent(name + ' New York City');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  return d.toISOString().split('T')[0];
+}
+
+async function loadData() {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
+    const rows = json.table.rows;
+    const cols = json.table.cols.map(c => c.label);
+    const nameIdx = cols.findIndex(c => /venue/i.test(c));
+    const hoodIdx = cols.findIndex(c => /neighbourhood/i.test(c));
+    const commentIdx = cols.findIndex(c => /comment/i.test(c));
+    const dateIdx = cols.findIndex(c => /date/i.test(c));
+    const slotIdx = cols.findIndex(c => /time slot/i.test(c));
+    const timeIdx = cols.findIndex(c => /^time$/i.test(c));
+    const notesIdx = cols.findIndex(c => /notes/i.test(c));
+    const itinIdx = cols.findIndex(c => /itinerary/i.test(c));
+    const catIdx = cols.findIndex(c => /category/i.test(c));
+
+    venues = rows.map(r => {
+      const g = (i) => i >= 0 && r.c[i] ? (r.c[i].f || r.c[i].v || '') : '';
+      const dateRaw = dateIdx >= 0 && r.c[dateIdx] ? r.c[dateIdx] : null;
+      let dateStr = '';
+      if (dateRaw && dateRaw.v) {
+        if (typeof dateRaw.v === 'string' && dateRaw.v.startsWith('Date(')) {
+          const parts = dateRaw.v.replace('Date(','').replace(')','').split(',');
+          const d = new Date(+parts[0], +parts[1], +parts[2]);
+          dateStr = d.toISOString().split('T')[0];
+        } else if (dateRaw.f) {
+          const d = new Date(dateRaw.f);
+          if (!isNaN(d)) dateStr = d.toISOString().split('T')[0];
+        }
+      }
+      const name = g(nameIdx);
+      if (!name) return null;
+      const catRaw = g(catIdx);
+      const v = {
+        name, neighbourhood: g(hoodIdx), comment: g(commentIdx),
+        date: dateStr, timeSlot: g(slotIdx), time: g(timeIdx),
+        notes: g(notesIdx), inItinerary: /yes/i.test(g(itinIdx)),
+        category: catRaw || ''
+      };
+      if (!v.category) v.category = assignCategory(v);
+      return v;
+    }).filter(Boolean);
+
+    init();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('error').style.display = 'block';
+  }
+}
+
+function init() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  updateProgress();
+  setCurrentDay();
+  buildKanban();
+  buildVenuePills();
+  renderVenues();
+  showTab('today');
+}
+
+function updateProgress() {
+  const now = new Date();
+  const total = TRIP_END - TRIP_START;
+  const elapsed = now - TRIP_START;
+  const pct = Math.max(0, Math.min(100, (elapsed/total)*100));
+  document.getElementById('prog-fill').style.width = pct + '%';
+  if (now < TRIP_START) {
+    const days = Math.ceil((TRIP_START - now) / 86400000);
+    document.getElementById('prog-label').textContent = days + ' days to go';
+  } else if (now > TRIP_END) {
+    document.getElementById('prog-label').textContent = 'Trip complete';
+  } else {
+    const day = Math.floor((now - TRIP_START) / 86400000) + 1;
+    document.getElementById('prog-label').textContent = 'Day ' + day + ' of 8';
+  }
+}
+
+function setCurrentDay() {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const idx = DAYS.findIndex(d => d.date === todayStr);
+  currentDayIdx = idx >= 0 ? idx : 0;
+}
+
+function changeDay(dir) {
+  currentDayIdx = Math.max(0, Math.min(DAYS.length-1, currentDayIdx + dir));
+  renderToday();
+}
+
+function renderToday() {
+  const d = DAYS[currentDayIdx];
+  document.getElementById('today-dayname').textContent = d.display;
+  const items = venues.filter(v => v.inItinerary && v.date === d.date);
+  document.getElementById('today-datesub').textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+  const summary = document.getElementById('ai-summary');
+  summary.className = 'ai-summary loading';
+  summary.textContent = 'Generating day summary...';
+  getAISummary(d, items);
+  const container = document.getElementById('today-content');
+  container.innerHTML = '';
+  if (items.length === 0) {
+    container.innerHTML = '<div class="no-items">Nothing scheduled for this day yet</div>';
+    return;
+  }
+  SLOTS.forEach(slot => {
+    const slotItems = items.filter(v => v.timeSlot === slot).sort((a,b) => (a.time||'').localeCompare(b.time||''));
+    if (!slotItems.length) return;
+    const dotClass = slot === 'Morning' ? 'dot-m' : slot === 'Afternoon' ? 'dot-a' : 'dot-e';
+    let html = `<div class="slot-section"><div class="slot-header"><div class="slot-dot ${dotClass}"></div><span class="slot-label">${slot}</span><span class="slot-count">${slotItems.length}</span></div>`;
+    slotItems.forEach(v => {
+      const timeStr = v.time ? v.time.replace(':00','') : '';
+      html += `<div class="day-item">
+        <div class="item-time">${timeStr}</div>
+        <div class="item-body">
+          <div class="in">${v.name}</div>
+          ${v.neighbourhood ? `<div class="is">${v.neighbourhood}</div>` : ''}
+          ${v.comment && v.comment !== v.name ? `<div class="is">${v.comment}</div>` : ''}
+          ${v.notes ? `<div class="is" style="font-style:italic;color:var(--text-hint)">${v.notes}</div>` : ''}
+          <a class="maps-btn" href="${mapsUrl(v.name)}" target="_blank">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1C3.34 1 2 2.34 2 4c0 2.5 3 5 3 5s3-2.5 3-5c0-1.66-1.34-3-3-3z" stroke="var(--blue)" stroke-width=".8"/><circle cx="5" cy="4" r="1" fill="var(--blue)"/></svg>
+            Maps
+          </a>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    container.innerHTML += html;
+  });
+}
+
+async function getAISummary(day, items) {
+  const el = document.getElementById('ai-summary');
+  if (!items.length) {
+    el.className = 'ai-summary';
+    el.textContent = 'Nothing scheduled for this day yet — check your wishlist for ideas.';
+    return;
+  }
+  try {
+    const prompt = `You are a friendly NYC trip assistant. Write a 2-3 sentence briefing for ${day.display} based on these scheduled items: ${items.map(v => `${v.timeSlot}: ${v.name}${v.neighbourhood ? ' ('+v.neighbourhood+')' : ''}${v.notes ? ' — '+v.notes : ''}`).join(', ')}. Be practical and specific. Mention any useful tips or things to know about the day's flow.`;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:150,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content && data.content[0] ? data.content[0].text : '';
+    el.className = 'ai-summary';
+    el.textContent = text || 'Have a great day in NYC!';
+  } catch(e) {
+    el.className = 'ai-summary';
+    el.textContent = 'Have a great day in NYC!';
+  }
+}
+
+function buildKanban() {
+  const thead = document.getElementById('kb-head');
+  const tbody = document.getElementById('kb-body');
+  let headHtml = '<tr><th class="kb-corner"></th>';
+  DAYS.forEach(d => {
+    headHtml += `<th class="kb-day-th"><div class="dn">${d.day}</div><div class="dd">${d.short}</div></th>`;
+  });
+  headHtml += '</tr>';
+  thead.innerHTML = headHtml;
+  let bodyHtml = '';
+  SLOTS.forEach(slot => {
+    const dotClass = slot === 'Morning' ? 'dot-m' : slot === 'Afternoon' ? 'dot-a' : 'dot-e';
+    const slotClass = slot === 'Morning' ? 'm' : slot === 'Afternoon' ? 'a' : 'e';
+    bodyHtml += `<tr><td class="kb-row-label"><div class="rli"><div class="rld ${dotClass}"></div><div class="rln">${slot}</div></div></td>`;
+    DAYS.forEach(d => {
+      const isTravel = (d.travel === 'morning' && slot !== 'Evening') || (d.travel === 'evening' && slot === 'Evening');
+      if (isTravel) {
+        bodyHtml += `<td class="kb-cell travel">${d.travel === 'morning' ? '✈ flying in' : '✈ flying out'}</td>`;
+        return;
+      }
+      const items = venues.filter(v => v.inItinerary && v.date === d.date && v.timeSlot === slot);
+      if (!items.length) { bodyHtml += `<td class="kb-cell empty"></td>`; return; }
+      bodyHtml += `<td class="kb-cell ${slotClass}">`;
+      items.forEach(v => {
+        bodyHtml += `<div class="kb-item"><div class="kn">${v.name}</div>${v.neighbourhood ? `<div class="ks">${v.neighbourhood}</div>` : ''}</div>`;
+      });
+      bodyHtml += '</td>';
+    });
+    bodyHtml += '</tr>';
+  });
+  tbody.innerHTML = bodyHtml;
+}
+
+function initMap() {
+  if (mapInstance) { renderMapMarkers(); return; }
+  if (!window.L) return;
+  mapInstance = L.map('map-el', {zoomControl:true}).setView([40.72, -73.98], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(mapInstance);
+  buildMapFilters();
+  buildMapLegend();
+  renderMapMarkers();
+  setTimeout(() => mapInstance.invalidateSize(), 100);
+}
+
+const VENUE_COORDS = {
+  'Estela':[40.7246,-73.9947],'Lucali':[40.6818,-74.0004],'Radio Bakery (Greenpoint)':[40.7324,-73.9550],
+  'Radio Bakery (Prospect Heights)':[40.6750,-73.9670],'Red Hook Tavern':[40.6778,-74.0120],
+  'Emilio\'s Ballato':[40.7246,-73.9945],'The Dead Rabbit':[40.7027,-74.0135],
+  'Double Crispy Bakery':[40.7155,-73.9985],'Jin Mei Dumpling':[40.7130,-73.9973],
+  'Panna II Garden':[40.7264,-73.9856],'Queens Night Market':[40.7467,-73.8449],
+  'David\'s Brisket House':[40.6811,-73.9499],'Utopia Bagels':[40.7895,-73.8077],
+  'Junior\'s Restaurant & Bakery':[40.6912,-73.9868],'Eileen\'s Special Cheesecake':[40.7223,-73.9980],
+  'Chelsea Market':[40.7424,-74.0057],'Mei Lai Wah':[40.7157,-73.9988],
+  'Prince Street Pizza':[40.7225,-73.9967],'Datz Deli':[40.7161,-73.9838],
+  'Dominique Ansel Bakery':[40.7263,-74.0023],'Ping\'s':[40.7159,-73.9988],
+  'Paris Baguette':[40.7579,-73.9713],'Joe\'s Pizza':[40.7303,-74.0020],
+  'Bleecker Street Pizza':[40.7321,-74.0028],'Magnolia Bakery':[40.7332,-74.0042],
+  'Paulie Gee\'s Slice Shop':[40.7323,-73.9545],'Nate\'s Detroit Pizza':[40.6762,-73.9802],
+  'My Pie Pizzeria Romana':[40.7579,-73.9709],'John\'s of Bleecker Street':[40.7295,-74.0020],
+  'Pop\'s Pizza':[40.7665,-73.9843],'Scarr\'s Pizza':[40.7159,-73.9891],
+  'Katz\'s Delicatessen':[40.7222,-73.9874],'Russ & Daughters':[40.7222,-73.9876],
+  'Di Fara Pizza':[40.6249,-73.9610],'Roberta\'s':[40.7054,-73.9340],
+  'Great NY Noodletown':[40.7158,-73.9979],'Barney Greengrass':[40.7880,-73.9745],
+  'Nom Wah Tea Parlor':[40.7141,-73.9981],'Di An Di':[40.7288,-73.9533],
+  'Statue of Liberty':[40.6892,-74.0445],'Wall Street':[40.7074,-74.0113],
+  '9/11 Memorial':[40.7116,-74.0133],'Brooklyn Bridge':[40.7061,-73.9969],
+  'Central Park':[40.7812,-73.9665],'New York Yankees':[40.8296,-73.9262],
+  'Snitches Upstate New York Hike':[41.5000,-74.1000]
+};
+
+function renderMapMarkers() {
+  if (!mapInstance) return;
+  mapMarkers.forEach(m => mapInstance.removeLayer(m));
+  mapMarkers = [];
+  const active = activeFilters.map;
+  const showAll = active.has('all');
+  venues.forEach(v => {
+    const coords = VENUE_COORDS[v.name];
+    if (!coords) return;
+    if (!showAll && !active.has(v.category)) return;
+    const color = CAT_COLORS[v.category] || '#888';
+    const border = v.inItinerary ? '#1a1a1a' : 'white';
+    const size = v.inItinerary ? 14 : 11;
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${border};box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>`,
+      iconSize:[size,size],iconAnchor:[size/2,size/2]
+    });
+    const marker = L.marker(coords, {icon}).addTo(mapInstance);
+    const popup = L.popup({maxWidth:220,closeButton:false,className:'custom-popup'}).setContent(
+      `<div class="map-popup">
+        <div class="pn">${v.name}</div>
+        <span class="pb ${v.category}">${v.category}</span>
+        ${v.comment ? `<div class="pc">${v.comment.length > 80 ? v.comment.substring(0,80)+'...' : v.comment}</div>` : ''}
+        <a class="pm" href="${mapsUrl(v.name)}" target="_blank">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 1C3.34 1 2 2.34 2 4c0 2.5 3 5 3 5s3-2.5 3-5c0-1.66-1.34-3-3-3z" stroke="#378ADD" stroke-width=".8"/><circle cx="5" cy="4" r="1" fill="#378ADD"/></svg>
+          Open in Google Maps
+        </a>
+      </div>`
+    );
+    marker.bindPopup(popup);
+    mapMarkers.push(marker);
+  });
+}
+
+function buildMapFilters() {
+  const cats = ['all','Pizza','Deli','Bakery','Bar','Restaurant','Activity'];
+  const labels = {all:'All',Pizza:'Pizza',Deli:'Deli',Bakery:'Bakery',Bar:'Bar / Club',Restaurant:'Restaurant',Activity:'Activity'};
+  const row = document.getElementById('map-filters');
+  row.innerHTML = cats.map(c => `<span class="fpill on" data-cat="${c}" onclick="toggleMapFilter('${c}')">${labels[c]}</span>`).join('');
+}
+
+function toggleMapFilter(cat) {
+  if (cat === 'all') {
+    activeFilters.map = new Set(['all']);
+    document.querySelectorAll('#map-filters .fpill').forEach(p => p.classList.add('on'));
+  } else {
+    activeFilters.map.delete('all');
+    const pill = document.querySelector(`#map-filters .fpill[data-cat="${cat}"]`);
+    if (activeFilters.map.has(cat)) {
+      activeFilters.map.delete(cat);
+      pill.classList.remove('on');
+    } else {
+      activeFilters.map.add(cat);
+      pill.classList.add('on');
+    }
+    if (activeFilters.map.size === 0) {
+      activeFilters.map.add('all');
+      document.querySelectorAll('#map-filters .fpill').forEach(p => p.classList.add('on'));
+    }
+    document.querySelector('#map-filters .fpill[data-cat="all"]').classList.toggle('on', activeFilters.map.has('all'));
+  }
+  renderMapMarkers();
+}
+
+function buildMapLegend() {
+  const items = [['Pizza','#E24B4A'],['Deli','#BA7517'],['Bakery','#EF9F27'],['Bar','#7F77DD'],['Restaurant','#1D9E75'],['Activity','#378ADD']];
+  document.getElementById('map-legend').innerHTML = items.map(([l,c]) => `<div class="leg"><div class="leg-dot" style="background:${c}"></div>${l}</div>`).join('') +
+    '<div class="leg"><div class="leg-dot" style="background:#888;border:2px solid #1a1a1a;box-sizing:border-box"></div>Scheduled</div>';
+}
+
+function buildVenuePills() {
+  const pills = [
+    {v:'all',label:'All'},
+    {v:'scheduled',label:'Scheduled'},
+    {v:'wishlist',label:'Wishlist'},
+    {v:'Pizza',label:'Pizza'},
+    {v:'Deli',label:'Deli'},
+    {v:'Bakery',label:'Bakery'},
+    {v:'Bar',label:'Bar'},
+    {v:'Restaurant',label:'Restaurant'},
+    {v:'Activity',label:'Activity'},
+  ];
+  document.getElementById('v-pills').innerHTML = pills.map(p =>
+    `<span class="vpill${p.v==='all'?' on':''}" data-v="${p.v}" onclick="setVenueFilter('${p.v}')">${p.label}</span>`
+  ).join('');
+}
+
+function setVenueFilter(v) {
+  venueFilter = v;
+  document.querySelectorAll('.vpill').forEach(p => p.classList.toggle('on', p.dataset.v === v));
+  renderVenues();
+}
+
+function renderVenues() {
+  const q = (document.getElementById('v-search').value || '').toLowerCase();
+  const filtered = venues.filter(v => {
+    if (venueFilter === 'scheduled' && !v.inItinerary) return false;
+    if (venueFilter === 'wishlist' && v.inItinerary) return false;
+    if (!['all','scheduled','wishlist'].includes(venueFilter) && v.category !== venueFilter) return false;
+    if (q && !v.name.toLowerCase().includes(q) && !v.neighbourhood.toLowerCase().includes(q) && !v.comment.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('v-count').textContent = `Showing ${filtered.length} venue${filtered.length !== 1 ? 's' : ''}`;
+  document.getElementById('v-cards').innerHTML = filtered.map((v,i) => {
+    const dateStr = v.date ? DAYS.find(d => d.date === v.date) : null;
+    return `<div class="vcard${v.inItinerary?' scheduled':''}" onclick="toggleVcard(this)">
+      <div class="vcard-top">
+        <div class="vcard-left">
+          <div class="vn">${v.name}</div>
+          ${v.neighbourhood ? `<div class="vh">${v.neighbourhood}</div>` : ''}
+          ${v.comment ? `<div class="vc-preview">${v.comment}</div>` : ''}
+        </div>
+        <div class="vcard-right">
+          <span class="cat-badge ${v.category}">${v.category}</span>
+          ${v.inItinerary ? '<span class="sched-badge">scheduled</span>' : ''}
+          <div class="chev">▾</div>
+        </div>
+      </div>
+      <div class="vcard-body">
+        ${v.comment ? `<div class="vcard-full">${v.comment}</div>` : ''}
+        ${v.inItinerary && dateStr ? `<div class="vcard-date"><div class="vcard-date-dot"></div>${dateStr.display}${v.timeSlot ? ' · ' + v.timeSlot : ''}</div>` : ''}
+        <a class="maps-link" href="${mapsUrl(v.name)}" target="_blank">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1C4 1 2.4 2.6 2.4 4.6 2.4 7.6 6 11 6 11s3.6-3.4 3.6-6.4C9.6 2.6 8 1 6 1z" stroke="#378ADD" stroke-width=".9"/><circle cx="6" cy="4.6" r="1.2" fill="#378ADD"/></svg>
+          Open in Google Maps
+        </a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleVcard(el) {
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.vcard.open').forEach(c => { c.classList.remove('open'); c.querySelector('.chev').textContent = '▾'; });
+  if (!wasOpen) { el.classList.add('open'); el.querySelector('.chev').textContent = '▴'; }
+}
+
+function showTab(tab) {
+  ['today','trip','map-screen','venues'].forEach(t => {
+    document.getElementById(t).style.display = 'none';
+    document.getElementById('nav-'+t).classList.remove('active');
+  });
+  document.getElementById(tab).style.display = 'flex';
+  document.getElementById(tab).style.flexDirection = 'column';
+  document.getElementById('nav-'+tab).classList.add('active');
+  if (tab === 'today') renderToday();
+  if (tab === 'map-screen') initMap();
+  if (tab === 'venues') renderVenues();
+}
+
+loadData();
+</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</body>
+</html>
