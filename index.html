@@ -312,19 +312,17 @@ async function loadData() {
       const name = g(nameIdx);
       if (!name) return null;
 
-      // Parse M/D/YYYY format from Google Sheets CSV
+      // Parse date — Google Sheets exports as "29 Apr 2026"
       let dateStr = '';
       const dateRaw = g(dateIdx);
       if (dateRaw) {
-        const parts = dateRaw.split('/');
-        if (parts.length === 3) {
-          const m = parts[0].padStart(2,'0');
-          const d = parts[1].padStart(2,'0');
-          const y = parts[2].length === 2 ? '20'+parts[2] : parts[2];
-          dateStr = `${y}-${m}-${d}`;
-        } else {
-          const d = new Date(dateRaw);
-          if (!isNaN(d)) dateStr = d.toISOString().split('T')[0];
+        const d = new Date(dateRaw);
+        if (!isNaN(d)) {
+          // Use UTC to avoid timezone shifting the date
+          const y = d.getUTCFullYear();
+          const m = String(d.getUTCMonth()+1).padStart(2,'0');
+          const day = String(d.getUTCDate()).padStart(2,'0');
+          dateStr = `${y}-${m}-${day}`;
         }
       }
 
@@ -344,6 +342,9 @@ async function loadData() {
       return v;
     }).filter(Boolean);
 
+    // Debug: log first 3 venues to console
+    console.log('Loaded', venues.length, 'venues');
+    console.log('First 3:', venues.slice(0,3).map(v => ({name:v.name, date:v.date, inItin:v.inItinerary, slot:v.timeSlot})));
     init();
   } catch(e) {
     console.error('Load error:', e.message);
