@@ -119,7 +119,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .fpill[data-cat="Bar"].on{background:var(--purple)}
 .fpill[data-cat="Restaurant"].on{background:var(--teal)}
 .fpill[data-cat="Activity"].on{background:var(--blue)}
-#map-el{width:100%;height:calc(100vh - 56px - 48px - 44px - 40px);min-height:300px}
+#map-el{width:100%;height:calc(100vh - 180px);min-height:400px}
 .map-legend{display:flex;gap:8px;flex-wrap:wrap;padding:6px 12px;border-top:0.5px solid var(--border);background:var(--white)}
 .leg{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted)}
 .leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -284,43 +284,60 @@ function formatDate(dateStr) {
 
 async function loadData() {
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
     const res = await fetch(url);
-    const text = await res.text();
-    const json = JSON.parse(text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)/)[1]);
-    const rows = json.table.rows;
-    const cols = json.table.cols.map(c => c.label);
-    const nameIdx = cols.findIndex(c => /venue/i.test(c));
-    const hoodIdx = cols.findIndex(c => /neighbourhood/i.test(c));
-    const commentIdx = cols.findIndex(c => /comment/i.test(c));
-    const dateIdx = cols.findIndex(c => /date/i.test(c));
-    const slotIdx = cols.findIndex(c => /time slot/i.test(c));
-    const timeIdx = cols.findIndex(c => /^time$/i.test(c));
-    const notesIdx = cols.findIndex(c => /notes/i.test(c));
-    const itinIdx = cols.findIndex(c => /itinerary/i.test(c));
-    const catIdx = cols.findIndex(c => /category/i.test(c));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    if (csv.includes('<!DOCTYPE') || csv.includes('<html')) throw new Error('Got HTML instead of CSV — sheet may not be public');
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error('No data rows');
 
-    venues = rows.map(r => {
-      const g = (i) => i >= 0 && r.c[i] ? (r.c[i].f || r.c[i].v || '') : '';
-      const dateRaw = dateIdx >= 0 && r.c[dateIdx] ? r.c[dateIdx] : null;
+    const headerIdx = rows.findIndex(r => r.some(c => /venue name/i.test(c)));
+    if (headerIdx < 0) throw new Error('No header row found');
+    const headers = rows[headerIdx].map(c => c.trim());
+
+    const idx = name => headers.findIndex(c => new RegExp(name,'i').test(c));
+    const nameIdx = idx('venue name');
+    const hoodIdx = idx('neighbourhood');
+    const commentIdx = idx('comment');
+    const dateIdx = idx('^date$');
+    const slotIdx = idx('time slot');
+    const timeIdx = idx('^time$');
+    const notesIdx = idx('^notes$');
+    const itinIdx = idx('itinerary');
+    const catIdx = idx('category');
+
+    venues = rows.slice(headerIdx + 1).map(r => {
+      const g = i => (i >= 0 && r[i]) ? r[i].trim() : '';
+      const name = g(nameIdx);
+      if (!name) return null;
+
+      // Parse M/D/YYYY format from Google Sheets CSV
       let dateStr = '';
-      if (dateRaw && dateRaw.v) {
-        if (typeof dateRaw.v === 'string' && dateRaw.v.startsWith('Date(')) {
-          const parts = dateRaw.v.replace('Date(','').replace(')','').split(',');
-          const d = new Date(+parts[0], +parts[1], +parts[2]);
-          dateStr = d.toISOString().split('T')[0];
-        } else if (dateRaw.f) {
-          const d = new Date(dateRaw.f);
+      const dateRaw = g(dateIdx);
+      if (dateRaw) {
+        const parts = dateRaw.split('/');
+        if (parts.length === 3) {
+          const m = parts[0].padStart(2,'0');
+          const d = parts[1].padStart(2,'0');
+          const y = parts[2].length === 2 ? '20'+parts[2] : parts[2];
+          dateStr = `${y}-${m}-${d}`;
+        } else {
+          const d = new Date(dateRaw);
           if (!isNaN(d)) dateStr = d.toISOString().split('T')[0];
         }
       }
-      const name = g(nameIdx);
-      if (!name) return null;
+
       const catRaw = g(catIdx);
       const v = {
-        name, neighbourhood: g(hoodIdx), comment: g(commentIdx),
-        date: dateStr, timeSlot: g(slotIdx), time: g(timeIdx),
-        notes: g(notesIdx), inItinerary: /yes/i.test(g(itinIdx)),
+        name,
+        neighbourhood: g(hoodIdx),
+        comment: g(commentIdx),
+        date: dateStr,
+        timeSlot: g(slotIdx),
+        time: g(timeIdx),
+        notes: g(notesIdx),
+        inItinerary: /yes/i.test(g(itinIdx)),
         category: catRaw || ''
       };
       if (!v.category) v.category = assignCategory(v);
@@ -329,13 +346,36 @@ async function loadData() {
 
     init();
   } catch(e) {
-    console.error(e);
+    console.error('Load error:', e.message);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    document.getElementById('error').innerHTML = `<p style="padding:24px;text-align:center;color:#888;font-size:13px;line-height:1.8">Could not load data.<br><br><strong style="color:#555">${e.message}</strong><br><br>Make sure your Google Sheet is shared as<br><strong style="color:#555">Anyone with the link — Viewer</strong></p>`;
     document.getElementById('error').style.display = 'block';
   }
 }
 
+function parseCSV(text) {
+  const rows = [];
+  for (let line of text.replace(/\r/g,'').split('\n')) {
+    if (!line.trim()) continue;
+    const row = [];
+    let cell = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cell += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === ',' && !inQ) {
+        row.push(cell); cell = '';
+      } else {
+        cell += c;
+      }
+    }
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+}
 function init() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
